@@ -1,6 +1,6 @@
 /**
  * ngUI.js
- * @version 1.0.0
+ * @version 1.0.1
  * @author Fábio Nogueira <fabio.bacabal@gmail.com>
  * @description text
  * @param {Object} $scope
@@ -13,22 +13,21 @@
     var ngUI, ngUIModule, $modules = {}, DOM;
     
     angular.module('ngUI',[])
-        .service('$ngUI', [function(){
+        .service('$ui', [function(){
             return ngUI; 
         }])
-        .service('ngUIModule', [function(){
+        .service('$module', [function(){
             return ngUIModule; 
         }]);
     
-    ngUIModule = function($scope){
-        $scope.$$isUIModule = true;
-    };
-    
     function initScopeModule($scope){
-        if ($scope.$$uiModuleInit) return;
+        if ($modules[$scope.$id] && $modules[$scope.$id].$$init){
+            return;
+        }
         
-        $modules[$scope.$id] = {};
-        $scope.$$uiModuleInit = true;
+        $modules[$scope.$id] = {
+            $$init: true
+        };
         
         $scope.$UI = function(name){
             return $modules[$scope.$id][name];
@@ -45,11 +44,7 @@
         });
     }
     function getModule($scope){
-        while ($scope){
-            if ($scope.$$isUIModule) return $scope;
-            $scope = $scope.$parent;
-        }
-        return null;
+        return $modules[$scope.$$moduleId];
     }
     function emit(event, args, context) {
         var i, listeners = this.$_observable_listeners[event];
@@ -297,12 +292,17 @@
         };
     }
     
+    ngUIModule = function($scope){
+        $modules[$scope.$id] = $scope;
+        $scope.$$moduleId = $scope.$id;
+    };
+    
     ngUI = {
         register: function($scope, publics, $element, name){
             var $scopeModule;
             
             name = name || $element.attr('name');
-
+            
             if (name){
                 $scopeModule = getModule($scope);
                 if ($scopeModule){
@@ -310,7 +310,7 @@
 
                     publics = publics || {};
                     setObservable(publics, $scopeModule);
-                    $modules[$scope.$id][name] = publics;
+                    $modules[$scopeModule.$id][name] = publics;
                 }
             }
         },
