@@ -1,6 +1,6 @@
 /**
  * ngUI.js
- * @version 1.0.2
+ * @version 1.0.4
  * @author Fábio Nogueira <fabio.bacabal@gmail.com>
  * @description text
  * @param {Object} $scope
@@ -8,7 +8,6 @@
  * @param {HTMLElement} $element angular.element
  * @param {String} name Nome da instância do componente
  */
-
 (function(){
     var ngUI, ngUIModule, $scopesModules = {}, components={}, DOM;
     
@@ -285,9 +284,35 @@
         };
     }
     
-    ngUIModule = function($scope){
+    ngUIModule = function($scope, onComponentsComplete){
+        var pendings = 0, off1, off2;
+        
         $scopesModules[$scope.$id] = $scope;
         $scope.$$moduleId = $scope.$id;
+        
+        off1 = $scope.$on('$includeContentRequested', function(){
+            pendings++;
+        });
+        off2 = $scope.$on('$includeContentLoaded', function(){
+            pendings--;
+            if (pendings===0) {
+                off1();
+                off2();
+                off1 = off2 = null;
+                
+                if (onComponentsComplete){
+                    onComponentsComplete(); onComponentsComplete = null;
+                }
+            }
+        });
+        
+        $scope.$evalAsync(function() {
+            setTimeout(function(){
+                if (onComponentsComplete && pendings<1){
+                    onComponentsComplete(); onComponentsComplete = null;
+                }                
+            },40);
+        });
     };
     
     ngUI = {
@@ -306,8 +331,7 @@
                     components[$scopeModule.$id][name] = publics;
                 }
             }
-        },
-        
+        },        
         /**
          * Retorna um json referente aos valores definidos no atributo properties ou na tag properties:
          * @example
