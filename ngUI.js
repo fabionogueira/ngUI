@@ -1,7 +1,8 @@
 /**
  * ngUI.js
- * @version 1.0.4
+ * @version 1.0.8
  * @author Fábio Nogueira <fabio.bacabal@gmail.com>
+ * @dependencies ngAnimate
  * @description text
  * @param {Object} $scope
  * @param {Object} publics Métodos públicos do component
@@ -9,13 +10,14 @@
  * @param {String} name Nome da instância do componente
  */
 (function(){
-    var ngUI, ngUIModule, $scopesModules = {}, components={}, DOM;
+    var ngUI, ngUIModule, $scopesModules = {}, components={}, DOM, $timeout;
     
-    angular.module('ngUI',[])
+    angular.module('ngUI',['ngAnimate'])
         .service('$ui', [function(){
             return ngUI; 
         }])
-        .service('$module', [function(){
+        .service('$module', ['$timeout', function(timeout){
+            $timeout = timeout;
             return ngUIModule; 
         }]);
     
@@ -26,7 +28,7 @@
             $scope.$UI = function(name){
                 return components[$scope.$id][name];
             };
-            $scope.$on('destroy', function(){
+            $scope.$on('$destroy', function(){
                 delete($scope.$UI);
                 delete($scopesModules[$scope.$id]);
                 delete(components[$scope.$id]);
@@ -80,21 +82,8 @@
         }
         
     };
-    function domGetTransitionDuration($element){
-        var o = getComputedStyle($element[0]),
-            s = o.transitionDuration;
-
-        if (s){
-            return Number(s.replace('s','').replace('ms','')) * 1000;
-        }else{
-            return 0;
-        }
-    }
     function HTMLElement(element){
         return element[0] || element;
-    }
-    function angularElement($element){
-        return $element[0] ? $element : angular.element($element);
     }
     function initSelector(selector){
         var t, a, c, v1, v2;
@@ -171,7 +160,7 @@
                         return angular.element(c);
                     }
 
-                    e = angular.fx.dom.find(c, selector);
+                    e = DOM.find(c, selector);
 
                     if (e){
                         return e;
@@ -180,30 +169,6 @@
             }
 
             return null;
-        },
-        show: function($element, fn){
-            $element = angularElement($element);
-            $element.addClass('ng-hide-animate');
-
-            setTimeout(function(){
-                $element.removeClass('ng-hide');
-            }, 1);
-
-            setTimeout(function(){
-                $element.removeClass('ng-hide-animate');
-                $element[0]._visible = true;
-                if (fn) fn();
-            }, domGetTransitionDuration($element));
-        },
-        hide: function($element, fn){
-            $element = angularElement($element);
-            $element.addClass('ng-hide ng-hide-animate');
-
-            setTimeout(function(){
-                $element.removeClass('ng-hide-animate');
-                $element[0]._visible = false;
-                if (fn) fn();
-            }, domGetTransitionDuration($element));
         },
         height: function(element) {
             element = HTMLElement(element);
@@ -251,21 +216,6 @@
                 height: h
             };
         },
-        dataClick: function(event){
-            var a, v, e, target = event.target || event.srcElement;
-
-            e = angular.fx.dom.closet(target, '[data-click]');
-            v = {key:null, value:null, target:null};
-
-            if (e){
-                a = e.getAttribute('data-click').split(':');
-                v.key    = a[0];
-                v.value  = a[1] || null;
-                v.target = e;
-            }
-
-            return v;
-        },
         focus: function(id){
             var e = document.getElementById(id);
 
@@ -301,15 +251,15 @@
                 off1 = off2 = null;
                 
                 if (onComponentsComplete){
-                    onComponentsComplete(); onComponentsComplete = null;
+                    onComponentsComplete(components[$scope.$id]); onComponentsComplete = null;
                 }
             }
         });
         
         $scope.$evalAsync(function() {
-            setTimeout(function(){
+            $timeout(function(){
                 if (onComponentsComplete && pendings<1){
-                    onComponentsComplete(); onComponentsComplete = null;
+                    onComponentsComplete(components[$scope.$id]); onComponentsComplete = null;
                 }                
             },40);
         });
@@ -348,7 +298,7 @@
                 attr = element.getAttribute('properties');
 
             if (attr){
-                try{json = JSON.parse(attr)}catch(_e){json={};}
+                try{json = JSON.parse(attr);}catch(_e){json={};}
             }else{
                 propertiesElement = element.children[0];
                 if (propertiesElement && propertiesElement.localName==='properties'){
